@@ -38,8 +38,6 @@ import com.anysoftkeyboard.base.utils.Logger;
 import com.anysoftkeyboard.base.utils.NullLogProvider;
 import com.anysoftkeyboard.chewbacca.ChewbaccaUncaughtExceptionHandler;
 import com.anysoftkeyboard.devicespecific.DeviceSpecific;
-import com.anysoftkeyboard.devicespecific.DeviceSpecificV15;
-import com.anysoftkeyboard.devicespecific.DeviceSpecificV16;
 import com.anysoftkeyboard.devicespecific.DeviceSpecificV19;
 import com.anysoftkeyboard.devicespecific.DeviceSpecificV24;
 import com.anysoftkeyboard.devicespecific.DeviceSpecificV26;
@@ -168,13 +166,11 @@ public class AnyApplication extends MultiDexApplication {
     }
   }
 
-  private static DeviceSpecific createDeviceSpecificImplementation(final int apiLevel) {
-    if (apiLevel < 16) return new DeviceSpecificV15();
-    if (apiLevel < 19) return new DeviceSpecificV16();
-    if (apiLevel < 24) return new DeviceSpecificV19();
-    if (apiLevel < 26) return new DeviceSpecificV24();
-    if (apiLevel < 28) return new DeviceSpecificV26();
-    if (apiLevel < 29) return new DeviceSpecificV28();
+  private static DeviceSpecific createDeviceSpecificImplementation() {
+    if (Build.VERSION.SDK_INT < 24) return new DeviceSpecificV19();
+    if (Build.VERSION.SDK_INT < 26) return new DeviceSpecificV24();
+    if (Build.VERSION.SDK_INT < 28) return new DeviceSpecificV26();
+    if (Build.VERSION.SDK_INT < 29) return new DeviceSpecificV28();
     return new DeviceSpecificV29();
   }
 
@@ -193,7 +189,7 @@ public class AnyApplication extends MultiDexApplication {
     Logger.i(TAG, "** BUILD_TYPE: " + BuildConfig.BUILD_TYPE);
     Logger.i(TAG, "** DEBUG: " + BuildConfig.DEBUG);
     Logger.i(TAG, "** TESTING_BUILD: " + BuildConfig.TESTING_BUILD);
-    msDeviceSpecific = createDeviceSpecificImplementation(Build.VERSION.SDK_INT);
+    msDeviceSpecific = createDeviceSpecificImplementation();
     Logger.i(
         TAG,
         "Loaded DeviceSpecific "
@@ -350,15 +346,18 @@ public class AnyApplication extends MultiDexApplication {
     }
   }
 
-  @NonNull protected QuickTextKeyFactory createQuickTextKeyFactory() {
+  @NonNull
+  protected QuickTextKeyFactory createQuickTextKeyFactory() {
     return new QuickTextKeyFactory(this);
   }
 
-  @NonNull protected KeyboardThemeFactory createKeyboardThemeFactory() {
+  @NonNull
+  protected KeyboardThemeFactory createKeyboardThemeFactory() {
     return new KeyboardThemeFactory(this);
   }
 
-  @NonNull protected KeyboardExtensionFactory createToolsKeyboardExtensionFactory() {
+  @NonNull
+  protected KeyboardExtensionFactory createToolsKeyboardExtensionFactory() {
     return new KeyboardExtensionFactory(
         this,
         R.string.settings_default_ext_keyboard_key,
@@ -366,7 +365,8 @@ public class AnyApplication extends MultiDexApplication {
         KeyboardExtension.TYPE_EXTENSION);
   }
 
-  @NonNull protected KeyboardExtensionFactory createTopKeyboardExtensionFactory() {
+  @NonNull
+  protected KeyboardExtensionFactory createTopKeyboardExtensionFactory() {
     return new KeyboardExtensionFactory(
         this,
         R.string.settings_default_top_row_key,
@@ -374,7 +374,8 @@ public class AnyApplication extends MultiDexApplication {
         KeyboardExtension.TYPE_TOP);
   }
 
-  @NonNull protected KeyboardExtensionFactory createBottomKeyboardExtensionFactory() {
+  @NonNull
+  protected KeyboardExtensionFactory createBottomKeyboardExtensionFactory() {
     return new KeyboardExtensionFactory(
         this,
         R.string.settings_default_ext_kbd_bottom_row_key,
@@ -382,11 +383,13 @@ public class AnyApplication extends MultiDexApplication {
         KeyboardExtension.TYPE_BOTTOM);
   }
 
-  @NonNull protected ExternalDictionaryFactory createExternalDictionaryFactory() {
+  @NonNull
+  protected ExternalDictionaryFactory createExternalDictionaryFactory() {
     return new ExternalDictionaryFactory(this);
   }
 
-  @NonNull protected KeyboardFactory createKeyboardFactory() {
+  @NonNull
+  protected KeyboardFactory createKeyboardFactory() {
     return new KeyboardFactory(this);
   }
 
@@ -460,12 +463,14 @@ public class AnyApplication extends MultiDexApplication {
       super(app, previous, notificationDriver);
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     protected Intent createBugReportingActivityIntent() {
       return new Intent(mApp, SendBugReportUiActivity.class);
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     protected String getAppDetails() {
       return DeveloperUtils.getAppDetails(mApp);
     }

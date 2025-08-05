@@ -1,41 +1,57 @@
 ---
-name: "deploy-request"
-description: "Request a deployment"
-author: "menny"
-
+name: 'Deploy Request'
+description: 'Request deployment of the IMA and all AddOns'
 inputs:
+  gh_user:
+    description: 'GitHub API username'
+    required: true
+  gh_token:
+    description: 'GitHub API token'
+    required: true
+  repo_owner:
+    description: 'Repository owner username'
+    default: 'AnySoftKeyboard'
+  repo_name:
+    description: 'Repository name'
+    default: 'AnySoftKeyboard'
   sha:
-    description: "SHA to deploy. Either a specific commit, or HEAD."
+    description: 'Commit SHA to deploy'
+    default: 'HEAD'
+  refname:
+    description: 'Branch name to release'
     required: true
-  ref:
-    description: "branch to deploy"
-    required: true
-  new_deploy:
-    description: "whether this is a new deploy"
-    required: true
-  api_username:
-    description: "username for github api"
-    required: true
-  api_token:
-    description: "token for github api"
+  deploy_mode:
+    description: 'What to deploy'
     required: true
 runs:
-  using: "docker"
-  image: "docker://ghcr.io/menny/android_ndk:1.20.0"
-  env:
-    TERM: dumb
-    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-    GRADLE_USER_HOME: ".github_cache_gradle/"
-
-  entrypoint: /bin/bash
-  args:
-    - .github/actions/deploy-request/deployment_request.sh
-    - ${{ inputs.sha }}
-    - ${{ inputs.ref }}
-    - ${{ inputs.new_deploy }}
-    - ${{ inputs.api_username }}
-    - ${{ inputs.api_token }}
-
-branding:
-  icon: 'upload-cloud'
-  color: 'blue'
+  using: "composite"
+  steps:
+    - uses: bazel-contrib/setup-bazel@0.15.0
+      with:
+        bazelisk-cache: true
+        disk-cache: ${{ github.workflow }}
+        repository-cache: true
+    - name: Request IME Deployment
+      shell: bash
+      run: |
+        bazel run //js/github_deployments -- deploy \
+          --api-username="${{ inputs.gh_user }}" \
+          --token="${{ inputs.gh_token }}" \
+          --owner="${{ inputs.repo_owner }}" \
+          --repo="${{ inputs.repo_name }}" \
+          --sha="${{ inputs.sha }}" \
+          --refname="${{ inputs.refname }}" \
+          --shardName=ime \
+          --deployMode="${{ inputs.deploy_mode }}"
+    - name: Request add-ons Deployment
+      shell: bash
+      run: |
+        bazel run //js/github_deployments -- deploy \
+          --api-username="${{ inputs.gh_user }}" \
+          --token="${{ inputs.gh_token }}" \
+          --owner="${{ inputs.repo_owner }}" \
+          --repo="${{ inputs.repo_name }}" \
+          --sha="${{ inputs.sha }}" \
+          --refname="${{ inputs.refname }}" \
+          --shardName=addons \
+          --deployMode="${{ inputs.deploy_mode }}"

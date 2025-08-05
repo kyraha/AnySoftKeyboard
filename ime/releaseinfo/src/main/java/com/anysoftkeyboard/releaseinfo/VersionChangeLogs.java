@@ -13,10 +13,17 @@ public class VersionChangeLogs {
     log.add(
         new VersionChangeLog(
             1,
+            13,
+            "",
+            Uri.parse("https://github.com/AnySoftKeyboard/AnySoftKeyboard/milestone/95"),
+            "Work in progress for 1.13."));
+    log.add(
+        new VersionChangeLog(
+            1,
             12,
             "",
             Uri.parse("https://github.com/AnySoftKeyboard/AnySoftKeyboard/milestone/94"),
-            "Support for Android 14.",
+            "Support for Android 15 (API 35).",
             "Improved clipboard support.",
             "Several fixes to the settings app navigation.",
             "Vibration fixes.",

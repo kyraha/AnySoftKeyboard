@@ -1,50 +1,40 @@
 ---
 name: deployment
-
-on:
-  deployment
-
+on: deployment
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.deployment.task }}-${{ github.event.deployment.environment }}-${{ github.event.deployment.payload.previous_environment }}
+  cancel-in-progress: true
 env:
   TERM: dumb
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-  GRADLE_USER_HOME: ".github_cache_gradle/"
-
 jobs:
   deploy:
-    runs-on: ubuntu-22.04
-    container: ghcr.io/menny/android_ndk:1.20.0
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.2
         with:
           token: ${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.2
         with:
           repository: ${{ secrets.SECRETS_REPOSITORY }}
           token: ${{ secrets.BOT_SECRETS_R_GITHUB_TOKEN }}
           path: ${{ secrets.SECRETS_REPOSITORY_FOLDER }}
           ref: main
-      - name: setup
-        env:
-          GITHUB_CONTEXT_JSON: ${{ toJson(github) }}
-        run: |
-          ./scripts/ci/ci_setup.sh
-          mkdir -p outputs/apk || true
-          mkdir -p outputs/bundle || true
-          mkdir -p outputs/fdroid || true
-          mkdir -p ime/app/build/outputs/mapping || true
-      - uses: actions/upload-artifact@v4.3.3
+      - uses: bazel-contrib/setup-bazel@0.15.0
         with:
-          name: github_object
-          path: build/github_object
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
       - name: status-in-progress
-        run: >
-          ./gradlew --stacktrace :deployment:updateDeploymentState \
-            -PRequest.apiUsername="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
-            -PRequest.apiUserToken="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
-            -PrequestStatus.environment="${{ github.event.deployment.environment }}" \
-            -PrequestStatus.deployment_id="${{ github.event.deployment.id }}" \
-            -PrequestStatus.deployment_state="in_progress"
+        run: |
+          bazel run //js/github_deployments -- status \
+            --api-username="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
+            --token="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
+            --owner=${{ github.repository_owner }} \
+            --repo="AnySoftKeyboard" \
+            --environment="${{ github.event.deployment.environment }}" \
+            --deployment-id="${{ github.event.deployment.id }}" \
+            --state=in_progress
       - uses: ./.github/actions/deploy
         with:
           deployment_environment: ${{ github.event.deployment.environment }}
@@ -55,48 +45,51 @@ jobs:
           keystore_password: ${{ secrets.ANYSOFTKEYBOARD_KEYSTORE_PASSWORD }}
           keystore_key_password: ${{ secrets.ANYSOFTKEYBOARD_KEYSTORE_KEY_PASSWORD }}
       - name: status-success
-        run: >
-          ./gradlew --stacktrace :deployment:updateDeploymentSuccess \
-            -PRequest.apiUsername="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
-            -PRequest.apiUserToken="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
-            -PrequestStatus.environment="${{ github.event.deployment.environment }}" \
-            -PrequestStatus.deployment_id="${{ github.event.deployment.id }}" \
-            -PrequestStatus.environment="${{ github.event.deployment.environment }}" \
-            -PrequestStatus.sha="${{ github.event.deployment.sha }}"
+        if: success()
+        run: |
+          bazel run //js/github_deployments -- success \
+            --api-username="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
+            --token="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
+            --owner=${{ github.repository_owner }} \
+            --repo="AnySoftKeyboard" \
+            --environment="${{ github.event.deployment.environment }}" \
+            --sha="${{ github.event.deployment.sha }}"
       - name: status-failure
         if: failure()
-        run: >
-          ./gradlew --stacktrace :deployment:updateDeploymentState \
-            -PRequest.apiUsername="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
-            -PRequest.apiUserToken="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
-            -PrequestStatus.environment="${{ github.event.deployment.environment }}" \
-            -PrequestStatus.deployment_id="${{ github.event.deployment.id }}" \
-            -PrequestStatus.deployment_state="failure"
-      - uses: actions/upload-artifact@v4.3.3
+        run: |
+          bazel run //js/github_deployments -- status \
+            --api-username="${{ secrets.BOT_MASTER_RW_GITHUB_USERNAME }}" \
+            --token="${{ secrets.BOT_MASTER_RW_GITHUB_TOKEN }}" \
+            --owner=${{ github.repository_owner }} \
+            --repo="AnySoftKeyboard" \
+            --environment="${{ github.event.deployment.environment }}" \
+            --deployment-id="${{ github.event.deployment.id }}" \
+            --state=failure
+      - uses: actions/upload-artifact@v4.6.2
         if: always()
         continue-on-error: true
         with:
           name: deploy-logging
           path: build/build-logging
-      - uses: actions/upload-artifact@v4.3.3
+      - uses: actions/upload-artifact@v4.6.2
         if: always()
         continue-on-error: true
         with:
           name: bundles
           path: outputs/bundle
-      - uses: actions/upload-artifact@v4.3.3
+      - uses: actions/upload-artifact@v4.6.2
         if: always()
         continue-on-error: true
         with:
           name: apks
           path: outputs/apk
-      - uses: actions/upload-artifact@v4.3.3
+      - uses: actions/upload-artifact@v4.6.2
         if: always()
         continue-on-error: true
         with:
           name: proguard-mapping
           path: ime/app/build/outputs/mapping
-      - uses: actions/upload-artifact@v4.3.3
+      - uses: actions/upload-artifact@v4.6.2
         continue-on-error: true
         if: always()
         with:

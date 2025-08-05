@@ -1,19 +1,12 @@
-import { assert } from 'chai';
-import { ActionInputs, getActionInputs, shouldApprove } from './approval.js';
+import test from 'node:test';
+import assert from 'node:assert';
+import { ActionInputs, getActionInputs, shouldApprove, CommandLineInputs } from './approval.js';
 
-describe('Approval', () => {
-  const actionInputFunc = (key: string) => {
-    switch (key) {
-      case 'token':
-        return 'GH_TOKEN';
-      case 'review_as':
-        return 'a_reviewer';
-      case 'allowed_users':
-        return 'allowed_1,allowed_2';
-      default: {
-        throw new Error(`unknown key ${key}!`);
-      }
-    }
+test.describe('Approval', () => {
+  const actionInput: CommandLineInputs = {
+    token: 'GH_TOKEN',
+    review_as: 'a_reviewer',
+    allowed_review_for: 'allowed_1,allowed_2',
   };
 
   const expectedInputs: ActionInputs = {
@@ -26,9 +19,9 @@ describe('Approval', () => {
     target_git: 'https://github.com/repo/valid',
   };
 
-  describe('Action Inputs', () => {
-    it('should return a full class', () => {
-      const result = getActionInputs(actionInputFunc, {
+  test.describe('Action Inputs', () => {
+    test.test('should return a full class', () => {
+      const result = getActionInputs(actionInput, {
         pull_request: {
           number: 123,
           body: 'blah',
@@ -43,39 +36,39 @@ describe('Approval', () => {
     });
   });
 
-  describe('Should Approve', () => {
-    it('happy path', () => {
-      assert.isTrue(shouldApprove(expectedInputs));
+  test.describe('Should Approve', () => {
+    test.test('happy path', () => {
+      assert.equal(shouldApprove(expectedInputs), true);
     });
 
-    it('should not approve because repos are not the same', () => {
+    test.test('should not approve because repos are not the same', () => {
       const inputs: ActionInputs = {
         ...expectedInputs,
         target_git: 'https://github.com/repo2/valid',
       };
-      assert.isFalse(shouldApprove(inputs));
+      assert.equal(shouldApprove(inputs), false);
     });
 
-    it('should not approve because sender_login not in list', () => {
+    test.test('should not approve because sender_login not in list', () => {
       const inputs: ActionInputs = {
         ...expectedInputs,
         sender_login: 'unknown',
       };
-      assert.isFalse(shouldApprove(inputs));
+      assert.equal(shouldApprove(inputs), false);
     });
 
-    it('should not approve because review_as not in requested_reviewers', () => {
+    test.test('should not approve because review_as not in requested_reviewers', () => {
       const inputs: ActionInputs = {
         ...expectedInputs,
         requested_reviewers: ['this', 'that', 'another'],
       };
-      assert.isFalse(shouldApprove(inputs));
+      assert.equal(shouldApprove(inputs), false);
     });
   });
 
-  describe('Approving', () => {
-    it('happy path', () => {
-      const result = getActionInputs(actionInputFunc, {
+  test.describe('Approving', () => {
+    test.test('happy path', () => {
+      const result = getActionInputs(actionInput, {
         pull_request: {
           number: 123,
           body: 'blah',

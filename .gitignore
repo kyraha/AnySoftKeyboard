@@ -44,3 +44,9 @@ addons/.generated_pack_version
 #js
 node_modules
 /dist
+
+# IJ Bazel Plugin
+.aswb/
+
+#bazel
+/bazel-*

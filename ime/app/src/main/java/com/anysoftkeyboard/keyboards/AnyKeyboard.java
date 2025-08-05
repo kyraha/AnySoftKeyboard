@@ -36,12 +36,14 @@ import com.anysoftkeyboard.dictionaries.BTreeDictionary;
 import com.anysoftkeyboard.ime.AnySoftKeyboardBase;
 import com.anysoftkeyboard.keyboardextensions.KeyboardExtension;
 import com.anysoftkeyboard.keyboards.views.KeyDrawableStateProvider;
+import com.anysoftkeyboard.utils.EmojiUtils;
 import com.anysoftkeyboard.utils.Workarounds;
 import com.menny.android.anysoftkeyboard.AnyApplication;
 import com.menny.android.anysoftkeyboard.BuildConfig;
 import com.menny.android.anysoftkeyboard.R;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -386,7 +388,8 @@ public abstract class AnyKeyboard extends Keyboard {
       return new char[0];
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     public CharSequence getKeyboardName() {
       return "not important";
     }
@@ -396,7 +399,8 @@ public abstract class AnyKeyboard extends Keyboard {
       return AddOn.INVALID_RES_ID;
     }
 
-    @NonNull @Override
+    @NonNull
+    @Override
     public String getKeyboardId() {
       return "no-important";
     }
@@ -435,7 +439,8 @@ public abstract class AnyKeyboard extends Keyboard {
 
   public abstract String getDefaultDictionaryLocale();
 
-  @NonNull public Locale getLocale() {
+  @NonNull
+  public Locale getLocale() {
     return Locale.ROOT;
   }
 
@@ -484,7 +489,8 @@ public abstract class AnyKeyboard extends Keyboard {
   }
 
   @Override
-  @Nullable protected Row createRowFromXml(
+  @Nullable
+  protected Row createRowFromXml(
       @NonNull AddOn.AddOnResourceMapping resourceMapping,
       Resources res,
       XmlResourceParser parser,
@@ -532,7 +538,8 @@ public abstract class AnyKeyboard extends Keyboard {
     mEnterKey.enable();
   }
 
-  @NonNull public abstract CharSequence getKeyboardName();
+  @NonNull
+  public abstract CharSequence getKeyboardName();
 
   public boolean isLeftToRightLanguage() {
     return !mRightToLeftLayout;
@@ -638,7 +645,8 @@ public abstract class AnyKeyboard extends Keyboard {
     return false;
   }
 
-  @NonNull public abstract String getKeyboardId();
+  @NonNull
+  public abstract String getKeyboardId();
 
   @KeyboardRowModeId
   public int getKeyboardMode() {
@@ -684,6 +692,8 @@ public abstract class AnyKeyboard extends Keyboard {
     private boolean mFunctionalKey;
     private boolean mEnabled;
     @NonNull private List<String> mKeyTags = Collections.emptyList();
+    @NonNull private List<EmojiUtils.Gender> mKeyGenders = Collections.emptyList();
+    @NonNull private List<EmojiUtils.SkinTone> mKeySkinTones = Collections.emptyList();
 
     public AnyKey(Row row, KeyboardDimens keyboardDimens) {
       super(row, keyboardDimens);
@@ -748,6 +758,18 @@ public abstract class AnyKeyboard extends Keyboard {
                 mKeyTags = Arrays.asList(tags.split(","));
               }
               break;
+            case R.attr.genders:
+              String genders = a.getString(remoteIndex);
+              if (!TextUtils.isEmpty(genders)) {
+                mKeyGenders = stringsToEnum(EmojiUtils.Gender.class, genders);
+              }
+              break;
+            case R.attr.skinTones:
+              String tones = a.getString(remoteIndex);
+              if (!TextUtils.isEmpty(tones)) {
+                mKeySkinTones = stringsToEnum(EmojiUtils.SkinTone.class, tones);
+              }
+              break;
           }
         } catch (Exception e) {
           Logger.w(TAG, "Failed to set data from XML!", e);
@@ -792,6 +814,20 @@ public abstract class AnyKeyboard extends Keyboard {
       }
     }
 
+    private static <T extends Enum<T>> List<T> stringsToEnum(Class<T> enumClazz, String enumsCSV) {
+      if (TextUtils.isEmpty(enumsCSV)) {
+        return Collections.emptyList();
+      }
+      String[] enumStrings = enumsCSV.split(",");
+      @SuppressWarnings("unchecked")
+      T[] enums = (T[]) Array.newInstance(enumClazz, enumStrings.length);
+
+      for (int i = 0; i < enumStrings.length; i++) {
+        enums[i] = Enum.valueOf(enumClazz, enumStrings[i]);
+      }
+      return Arrays.asList(enums);
+    }
+
     @Override
     public int getCodeAtIndex(int index, boolean isShifted) {
       return mCodes.length == 0 ? 0 : isShifted ? mShiftedCodes[index] : mCodes[index];
@@ -833,8 +869,14 @@ public abstract class AnyKeyboard extends Keyboard {
       return super.getCurrentDrawableState(provider);
     }
 
-    @NonNull public List<String> getKeyTags() {
+    @NonNull
+    public List<String> getKeyTags() {
       return mKeyTags;
+    }
+
+    @NonNull
+    public List<EmojiUtils.SkinTone> getSkinTones() {
+      return mKeySkinTones;
     }
 
     @Retention(RetentionPolicy.SOURCE)

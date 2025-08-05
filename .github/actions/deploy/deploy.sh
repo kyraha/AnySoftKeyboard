@@ -16,6 +16,13 @@ shift
 export KEY_STORE_FILE_DEFAULT_ALIAS_PASSWORD="${1}"
 shift
 
+# Setup the android env for ASK
+./scripts/ci/ci_setup.sh
+mkdir -p outputs/apk || true
+mkdir -p outputs/bundle || true
+mkdir -p outputs/fdroid || true
+mkdir -p ime/app/build/outputs/mapping || true
+
 function deployProcessFromEnvironmentName() {
     #imeMain_alpha_100
     [[ $1 =~ ([a-zA-Z]+)_.*_.* ]]
@@ -123,6 +130,7 @@ if [[ "${FRACTION}" == "1.00" ]] && [[ "${DEPLOY_CHANNEL}" == "production" ]]; t
     git config --global --add safe.directory "${PWD}"
     BRANCH_NAME="$(git name-rev --name-only HEAD)"
     echo "Will create ${MARKER_FILE} to halt future releases in the branch '${BRANCH_NAME}'."
+    mkdir -p "$(dirname "${MARKER_FILE}")"
     echo "Full deployment to production '${DEPLOYMENT_ENVIRONMENT}' was successful." > "${MARKER_FILE}"
     git config --global user.email "ask@evendanan.net"
     git config --global user.name "Polyglot"

@@ -6,6 +6,7 @@
     <!-- this should hold the locales the app is translated to, and any addon-->
     <!-- https://android.googlesource.com/platform/frameworks/base/+/refs/heads/master/core/res/res/values/locale_config.xml -->
     <string-array name="settings_key_force_locale_values">
+        <item>System</item>
         <item>af</item>
         <item>af-ZA</item>
         <item>ar</item>
@@ -60,7 +61,7 @@
         <item>hu-HU</item>
         <item>hy</item>
         <item>hy-AM</item>
-        <item>id</item>
+        <item>in</item>
         <item>in-ID</item>
         <item>is</item>
         <item>is-IS</item>
@@ -80,8 +81,11 @@
         <item>ku-TR</item>
         <item>lt</item>
         <item>lt-LT</item>
+        <item>lv</item>
+        <item>lv-LV</item>
         <item>mk</item>
         <item>mk-MK</item>
+        <item>ml</item>
         <item>ml-IN</item>
         <item>my</item>
         <item>my-MM</item>
@@ -102,7 +106,7 @@
         <item>ru-RU</item>
         <item>sc</item>
         <item>sc-IT</item>
-        <item>se</item>
+        <item>si</item>
         <item>si-LK</item>
         <item>sk</item>
         <item>sk-SK</item>
@@ -110,12 +114,12 @@
         <item>sl-SI</item>
         <item>sq</item>
         <item>sq-AL</item>
+        <item>sv</item>
         <item>sv-SE</item>
         <item>ta</item>
         <item>ta-IN</item>
         <item>th</item>
         <item>th-TH</item>
-        <item>tl</item>
         <item>tlh</item>
         <item>tlh-AA</item>
         <item>tr</item>
@@ -126,6 +130,7 @@
         <item>vi-VN</item>
         <item>wo</item>
         <item>wo-SN</item>
+        <item>zh</item>
         <item>zh-CN</item>
     </string-array>
 </resources>

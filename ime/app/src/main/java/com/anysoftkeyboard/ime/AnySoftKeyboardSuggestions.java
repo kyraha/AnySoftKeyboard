@@ -97,7 +97,7 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
   private boolean mInputFieldSupportsAutoPick;
   private boolean mAutoCorrectOn;
   private boolean mAllowSuggestionsRestart = true;
-  private boolean mCurrentlyAllowSuggestionRestart = true;
+
   private boolean mJustAutoAddedWord = false;
 
   @VisibleForTesting
@@ -116,11 +116,13 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     for (char separator : chars) sparseBooleanArray.put(separator, true);
   }
 
-  @Nullable protected Keyboard.Key getLastUsedKey() {
+  @Nullable
+  protected Keyboard.Key getLastUsedKey() {
     return mLastKey;
   }
 
-  @NonNull private static CompletionInfo[] copyCompletionsFromAndroid(
+  @NonNull
+  private static CompletionInfo[] copyCompletionsFromAndroid(
       @Nullable CompletionInfo[] completions) {
     if (completions == null) {
       return new CompletionInfo[0];
@@ -241,18 +243,6 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     mKeyboardHandler.removeMessages(KeyboardUIStateHandler.MSG_CLOSE_DICTIONARIES);
 
     abortCorrectionAndResetPredictionState(false);
-
-    if (!restarting) {
-      mCurrentlyAllowSuggestionRestart = mAllowSuggestionsRestart;
-    } else {
-      // something very fishy happening here...
-      // this is the only way I can get around it.
-      // it seems that when a onStartInput is called with restarting ==
-      // true
-      // suggestions restart fails :(
-      // see Browser when editing multiline textbox
-      mCurrentlyAllowSuggestionRestart = false;
-    }
   }
 
   @Override
@@ -263,6 +253,8 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     mCompletionOn = false;
     mCompletions = EMPTY_COMPLETIONS;
     mInputFieldSupportsAutoPick = false;
+    // prediction should be on by default, unless disabled by a specific variation
+    mPredictionOn = true;
 
     switch (attribute.inputType & EditorInfo.TYPE_MASK_CLASS) {
       case EditorInfo.TYPE_CLASS_DATETIME:
@@ -271,16 +263,19 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
             "Setting INPUT_MODE_DATETIME as keyboard due to a TYPE_CLASS_DATETIME" + " input.");
         getKeyboardSwitcher()
             .setKeyboardMode(KeyboardSwitcher.INPUT_MODE_DATETIME, attribute, restarting);
+        mPredictionOn = false;
         break;
       case EditorInfo.TYPE_CLASS_NUMBER:
         Logger.d(TAG, "Setting INPUT_MODE_NUMBERS as keyboard due to a TYPE_CLASS_NUMBER input.");
         getKeyboardSwitcher()
             .setKeyboardMode(KeyboardSwitcher.INPUT_MODE_NUMBERS, attribute, restarting);
+        mPredictionOn = false;
         break;
       case EditorInfo.TYPE_CLASS_PHONE:
         Logger.d(TAG, "Setting INPUT_MODE_PHONE as keyboard due to a TYPE_CLASS_PHONE input.");
         getKeyboardSwitcher()
             .setKeyboardMode(KeyboardSwitcher.INPUT_MODE_PHONE, attribute, restarting);
+        mPredictionOn = false;
         break;
       case EditorInfo.TYPE_CLASS_TEXT:
         Logger.d(TAG, "A TYPE_CLASS_TEXT input.");
@@ -296,29 +291,19 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
           case EditorInfo.TYPE_TEXT_VARIATION_URI:
           case EditorInfo.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
             Logger.d(TAG, "An internet input with has prediction but no auto-pick");
-            mPredictionOn = true;
             mInputFieldSupportsAutoPick = false;
             break;
           default:
             mInputFieldSupportsAutoPick = true;
-            mPredictionOn = true;
         }
 
         switch (textVariation) {
           case EditorInfo.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
-          case EditorInfo.TYPE_TEXT_VARIATION_URI:
           case EditorInfo.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
             mAutoSpace = false;
             break;
           default:
             mAutoSpace = mPrefsAutoSpace;
-        }
-
-        final int textFlag = attribute.inputType & EditorInfo.TYPE_MASK_FLAGS;
-        if ((textFlag & EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
-            == EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS) {
-          Logger.d(TAG, "Input requested NO_SUGGESTIONS.");
-          mPredictionOn = false;
         }
 
         switch (textVariation) {
@@ -351,15 +336,20 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
             getKeyboardSwitcher()
                 .setKeyboardMode(KeyboardSwitcher.INPUT_MODE_TEXT, attribute, restarting);
         }
-
         break;
       default:
         Logger.d(TAG, "Setting INPUT_MODE_TEXT as keyboard due to a default input.");
         // No class. Probably a console window, or no GUI input connection
-        mPredictionOn = false;
         mAutoSpace = mPrefsAutoSpace;
         getKeyboardSwitcher()
             .setKeyboardMode(KeyboardSwitcher.INPUT_MODE_TEXT, attribute, restarting);
+    }
+
+    final int textFlag = attribute.inputType & EditorInfo.TYPE_MASK_FLAGS;
+    if ((textFlag & EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
+        == EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS) {
+      Logger.d(TAG, "Input requested NO_SUGGESTIONS.");
+      mPredictionOn = false;
     }
 
     mPredictionOn = mPredictionOn && mShowSuggestions;
@@ -919,7 +909,8 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     }
   }
 
-  @NonNull protected DictionaryBackgroundLoader.Listener getDictionaryLoadedListener(
+  @NonNull
+  protected DictionaryBackgroundLoader.Listener getDictionaryLoadedListener(
       @NonNull AnyKeyboard currentAlphabetKeyboard) {
     return NO_OP_DICTIONARY_LOADER_LISTENER;
   }
@@ -970,7 +961,6 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     final InputViewBinder inputView = getInputView();
     if (!isPredictionOn()
         || !mAllowSuggestionsRestart
-        || !mCurrentlyAllowSuggestionRestart
         || inputView == null
         || !inputView.isShown()) {
       // why?
@@ -984,10 +974,9 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
       Logger.d(
           TAG,
           "performRestartWordSuggestion: no need to restart: isPredictionOn=%s,"
-              + " mAllowSuggestionsRestart=%s, mCurrentlyAllowSuggestionRestart=%s",
+              + " mAllowSuggestionsRestart=%s",
           isPredictionOn(),
-          mAllowSuggestionsRestart,
-          mCurrentlyAllowSuggestionRestart);
+          mAllowSuggestionsRestart);
       return false;
     } else if (!isCursorTouchingWord()) {
       Logger.d(TAG, "User moved cursor to no-man land. Bye bye.");
@@ -1010,12 +999,14 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     }
   }
 
-  @NonNull protected Suggest getSuggest() {
+  @NonNull
+  protected Suggest getSuggest() {
     return mSuggest;
   }
 
   @Override
-  @NonNull protected List<Drawable> generateWatermark() {
+  @NonNull
+  protected List<Drawable> generateWatermark() {
     final List<Drawable> watermark = super.generateWatermark();
     if (mSuggest.isIncognitoMode()) {
       watermark.add(ContextCompat.getDrawable(this, R.drawable.ic_watermark_incognito));
@@ -1023,7 +1014,8 @@ public abstract class AnySoftKeyboardSuggestions extends AnySoftKeyboardKeyboard
     return watermark;
   }
 
-  @NonNull protected Suggest createSuggest() {
+  @NonNull
+  protected Suggest createSuggest() {
     return new SuggestImpl(this);
   }
 

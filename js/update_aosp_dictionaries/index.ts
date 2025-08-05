@@ -3,11 +3,11 @@ import fs from 'fs';
 import https from 'follow-redirects';
 import { tmpdir } from 'os';
 import zlib from 'zlib';
-import tar from 'tar';
+import * as tar from 'tar';
 import { join } from 'path';
 import { setFailed } from '@actions/core';
 import yaml from 'js-yaml';
-import TextFileDiff from 'text-file-diff';
+import { TextFileDiff } from './differ.js';
 
 async function downloadFileToTemp(url: string): Promise<string> {
   const tempFile = join(tmpdir(), `${Math.random().toString(16).substring(2)}_dictionaries.tar.gz`);
@@ -30,6 +30,10 @@ async function decompressTarGz(tarGzFilePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     return fs.promises
       .mkdir(join(tmpdir(), Math.random().toString(16).substring(2)), { recursive: true })
+      .then((folder) => {
+        if (folder) return folder;
+        else throw Error('could not create a folder in tmp-dir');
+      })
       .then((destinationFolder) => {
         fs.createReadStream(tarGzFilePath)
           .on('error', (err) => reject(err))
@@ -47,6 +51,10 @@ async function decompressGz(gzFilePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     return fs.promises
       .mkdir(join(tmpdir(), Math.random().toString(16).substring(2)), { recursive: true })
+      .then((folder) => {
+        if (folder) return folder;
+        else throw Error('could not create a folder in tmp-dir');
+      })
       .then((destinationFolder) => {
         fs.createReadStream(gzFilePath)
           .on('error', (err) => reject(err))
@@ -71,9 +79,9 @@ async function compareArchives(src: string, trgt: string): Promise<Array<string>
   const targetFile = await decompressGz(trgt);
   console.log(`Target file: ${targetFile}`);
 
-  const differ = new TextFileDiff.default();
+  const differ = new TextFileDiff();
 
-  const diffs = [];
+  const diffs: string[] = [];
   differ.on('-', (line) => diffs.push(` * REMOVED: '${line}'`));
   differ.on('+', (line) => diffs.push(` * NEW: '${line}'`));
 
@@ -85,7 +93,6 @@ program.name('update-aosp-dictionaries').description('CLI to update AOSP gz aosp
 
 program
   .command('update')
-  .requiredOption('--repository_root <root_path>', 'Path to the repository root folder')
   .requiredOption('--dictionaries_archive <http_url>', 'URL to download the archive')
   .requiredOption('--dictionaries_mapping <path>', 'Path mapping file')
   .action(async (options) => {
@@ -101,7 +108,7 @@ program
 
     for (const mapping of mappings) {
       const src = `${dictionaries_folder}/${mapping[0]}`;
-      const trgt = `${options.repository_root}/${mapping[1]}`;
+      const trgt = `${process.env.BUILD_WORKSPACE_DIRECTORY}/${mapping[1]}`;
       console.log('********************');
       console.log(` - comparing remote ${src} to local ${trgt}`);
       try {
